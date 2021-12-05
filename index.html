@@ -1,15 +1,466 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Testing</title>
-    <link rel="stylesheet" href="style.css" />
+    <title>Museum - three.js</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
   </head>
   <body>
-    <canvas id="c"></canvas>
+    <div id="container"></div>
 
-    <script type="module" src="scripts.js"></script>
+    <script type="module">
+      import * as THREE from "https://threejs.org/build/three.module.js";
+      import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
+      import { GLTFLoader } from "https://threejs.org/examples/jsm/loaders/GLTFLoader.js";
+
+      //objects
+      let scene, renderer, camera;
+      let model, skeleton, mixer, clock;
+      let motion = { height: 1.8, speed: 0.2, turnSpeed: Math.PI * 0.02 };
+      let keyMap = {};
+      let delta = 0.008; // seconds.
+      let moveDistance = 20 * delta; // 20 pixels per second
+      let rotateAngle = (Math.PI / 2) * delta; // pi/2 radians (90 degrees) per second
+      let tTracker = false;
+      let lTracker = false;
+      let rTracker = false;
+      let Tracker8 = false;
+      let Tracker9 = false;
+      let xTracker = false;
+      let obj3, obj5;
+
+      function init() {
+        const container = document.getElementById("container");
+        clock = new THREE.Clock();
+
+        scene = new THREE.Scene();
+        scene.translateX(3.0).translateY(-0.09).translateZ(-2.5);
+        scene.background = new THREE.Color(0xa0a0a0);
+        // scene.fog = new THREE.Fog(0xa0a0a0, 10, 50);
+
+        const hemiLight = new THREE.HemisphereLight(0x606060, 0x2a2a35);
+        hemiLight.position.set(0, 1, 0);
+        scene.add(hemiLight);
+
+        //Texture
+        const dinding = new THREE.TextureLoader().load("texture/bulat.jpg");
+        dinding.wrapS = THREE.RepeatWrapping;
+        dinding.wrapT = THREE.RepeatWrapping;
+        dinding.repeat.set(1, 1);
+
+        // const texture2 = new THREE.TextureLoader().load("texture/bulat.jpg");
+        // texture2.wrapS = THREE.RepeatWrapping;
+        // texture2.wrapT = THREE.RepeatWrapping;
+        // texture2.repeat.set(4, 1);
+
+        const texture3 = new THREE.TextureLoader().load("texture/atap.jpg");
+        texture3.wrapS = THREE.RepeatWrapping;
+        texture3.wrapT = THREE.RepeatWrapping;
+        texture3.repeat.set(1, 1);
+
+        const texture4 = new THREE.TextureLoader().load("texture/lantai.jpg");
+        texture4.wrapS = THREE.RepeatWrapping;
+        texture4.wrapT = THREE.RepeatWrapping;
+        texture4.repeat.set(2, 2);
+
+        const textures = new THREE.TextureLoader().load("texture/grass.jpg");
+        textures.wrapS = THREE.RepeatWrapping;
+        textures.wrapT = THREE.RepeatWrapping;
+        textures.repeat.set(2, 2);
+
+        const borobudur = new THREE.TextureLoader().load("texture/borobudur.jpg");
+
+        // floor
+
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(8, 10, 20, 20), new THREE.MeshPhongMaterial({ map: texture4, side: THREE.DoubleSide }));
+        mesh.rotation.x = -Math.PI / 2;
+        scene.add(mesh);
+
+        //luaran
+        const mesh1 = new THREE.Mesh(new THREE.PlaneGeometry(16, 16, 20, 20), new THREE.MeshPhongMaterial({ map: textures, side: THREE.DoubleSide }));
+        mesh1.rotation.x = -Math.PI / 2;
+        mesh1.translateZ(-0.0009);
+        scene.add(mesh1);
+
+        // Ceiling
+        const planeGeometry3 = new THREE.PlaneGeometry(8, 10, 20, 20);
+        const planeMaterial3 = new THREE.MeshPhongMaterial({ map: texture3, side: THREE.DoubleSide });
+        const planeObject3 = new THREE.Mesh(planeGeometry3, planeMaterial3);
+        scene.add(planeObject3);
+        planeObject3.translateX(0.0).translateY(2.5).translateZ(0.0);
+        planeObject3.rotation.x = -Math.PI / 2;
+
+        //Pictures
+
+        const gambar = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2), new THREE.MeshPhongMaterial({ map: borobudur, side: THREE.DoubleSide }));
+        scene.add(gambar);
+        gambar.translateX(-2.5).translateY(1.26).translateZ(-3.85);
+        gambar.rotation.y = Math.PI / 2;
+        gambar.rotateOnAxis(new THREE.Vector3(0, -1, 0), Math.PI / 2);
+
+        const bingkai = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.2), new THREE.MeshPhongMaterial({ color: "rgb(21,21,21)", side: THREE.DoubleSide }));
+        scene.add(bingkai);
+        bingkai.translateX(-2.5).translateY(1.26).translateZ(-3.9);
+        bingkai.rotation.y = Math.PI / 2;
+        bingkai.rotateOnAxis(new THREE.Vector3(0, -1, 0), Math.PI / 2);
+
+        // samping kiri
+        const cubeGeometry2 = new THREE.BoxGeometry(2.5, 0.3, 10);
+        const cubeMaterial2 = new THREE.MeshPhongMaterial({ map: dinding });
+        const leftWall = new THREE.Mesh(cubeGeometry2, cubeMaterial2);
+        scene.add(leftWall);
+
+        leftWall.translateX(-4.15).translateY(1.26).translateZ(0.0);
+        leftWall.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+
+        // belakang
+        const cubeGeometry1 = new THREE.BoxGeometry(2.5, 1, 8);
+        const cubeMaterial1 = new THREE.MeshPhongMaterial({ map: dinding });
+        const backWall = new THREE.Mesh(cubeGeometry1, cubeMaterial1);
+        scene.add(backWall);
+
+        backWall.translateX(0.0).translateY(1.26).translateZ(-4.5);
+        backWall.rotation.x = Math.PI / 2;
+        backWall.rotation.y = Math.PI / 2;
+
+        // samping kanan
+        const cubeGeometry = new THREE.BoxGeometry(2.5, 1, 10);
+        const cubeMaterial = new THREE.MeshPhongMaterial({ map: dinding });
+        const rightWall = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        scene.add(rightWall);
+
+        rightWall.translateX(4.5).translateY(1.26).translateZ(0.0);
+        rightWall.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+
+        // Kaca Depan
+        const cubeGeometryFront = new THREE.BoxGeometry(8.0, 2.5, 0.01);
+        const cubeMaterialFront = new THREE.MeshPhongMaterial({ color: "rgb(0x949494)", opacity: 0.4, transparent: true });
+        const WallFront = new THREE.Mesh(cubeGeometryFront, cubeMaterialFront);
+        scene.add(WallFront);
+
+        // Set position of the cube
+        WallFront.translateX(0.0).translateY(1.25).translateZ(5.0);
+        WallFront.rotateOnAxis(new THREE.Vector3(0, 1, 0), (Math.PI * 2) / 2);
+
+        //Bingkai Patung
+        // Wall3
+        const cubeGeometryW3 = new THREE.BoxGeometry(2.5, 3, 0.01);
+        const cubeMaterialW3 = new THREE.MeshPhongMaterial({ color: "rgb(0xa8ccd7)", opacity: 0.5, transparent: true });
+        const Wall3 = new THREE.Mesh(cubeGeometryW3, cubeMaterialW3);
+        scene.add(Wall3);
+
+        // Set position of the cube
+        Wall3.translateX(-1.0).translateY(1.25).translateZ(-2.2);
+        Wall3.rotation.x = Math.PI / 2;
+        Wall3.rotation.y = Math.PI / 2;
+
+        // Wall4
+        const cubeGeometryW4 = new THREE.BoxGeometry(2.5, 3, 0.01);
+        const cubeMaterialW4 = new THREE.MeshPhongMaterial({ color: "rgb(0xa8ccd7)", opacity: 0.5, transparent: true });
+        const Wall4 = new THREE.Mesh(cubeGeometryW4, cubeMaterialW4);
+        scene.add(Wall4);
+
+        // Set position of the cube
+        Wall4.translateX(1.0).translateY(1.25).translateZ(-2.2);
+        Wall4.rotation.x = Math.PI / 2;
+        Wall4.rotation.y = Math.PI / 2;
+
+        // Wall5
+        const cubeGeometryW5 = new THREE.BoxGeometry(2, 2.5, 0.01);
+        const cubeMaterialW5 = new THREE.MeshPhongMaterial({ color: "rgb(0xa8ccd7)", opacity: 0.5, transparent: true });
+        const Wall5 = new THREE.Mesh(cubeGeometryW5, cubeMaterialW5);
+        scene.add(Wall5);
+
+        // Set position of the cube
+        Wall5.translateX(-0.05).translateY(1.25).translateZ(-0.7);
+        // Wall5.rotation.x = Math.PI / 2;
+        Wall5.rotateOnAxis(new THREE.Vector3(0, 1, 0), (Math.PI * 2) / 2);
+
+        //Load Models
+        const loader = new GLTFLoader();
+        let obj, obj2, obj3;
+
+        loader.load("./models/models/monas/scene.gltf", function (gltf) {
+          obj = gltf.scene;
+          gltf.scene.scale.set(10.1, 15.08, 10.01);
+          scene.add(gltf.scene);
+          obj.translateX(0.0).translateY(0.0).translateZ(-2.2);
+          obj.rotation.y -= Math.PI / 2;
+          obj.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
+        });
+
+        // loader.load("./models/models/door/scene.gltf", function (gltf3) {
+        //   obj3 = gltf3.scene;
+        //   gltf3.scene.scale.set(10.1, 15.08, 10.01);
+        //   scene.add(gltf3.scene);
+        //   obj3.translateX(3.5).translateY(0.8).translateZ(-0.2);
+        //   obj3.rotation.y -= Math.PI / 2;
+        //   obj3.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
+        // });
+
+        loader.load("./models/models/bookshelf/scene.gltf", function (gltf2) {
+          obj2 = gltf2.scene;
+          gltf2.scene.scale.set(0.05, 0.05, 0.1);
+          scene.add(gltf2.scene);
+          obj2.translateX(3.5).translateY(0.85).translateZ(-0.2);
+          // obj2.rotation.y = -Math.PI / 2;
+          // obj2.rotation.x = -Math.PI / 2;
+          obj2.rotateOnAxis(new THREE.Vector3(0, 1, 0), -Math.PI / 2);
+        });
+
+        loader.load("models/Xbot.glb", function (gltf) {
+          model = gltf.scene;
+          scene.add(model);
+          model.translateX(100.0).translateY(110.0).translateZ(-2.8);
+          model.rotateOnAxis(new THREE.Vector3(0, -1, 0), Math.PI / 2);
+
+          model.traverse(function (object) {
+            if (object.isMesh) object.castShadow = true;
+          });
+
+          skeleton = new THREE.SkeletonHelper(model);
+          skeleton.visible = false;
+          scene.add(skeleton);
+
+          const animations = gltf.animations;
+          mixer = new THREE.AnimationMixer(model);
+
+          numAnimations = animations.length;
+
+          for (let i = 0; i !== numAnimations; ++i) {
+            let clip = animations[i];
+            const name = clip.name;
+
+            if (baseActions[name]) {
+              const action = mixer.clipAction(clip);
+              activateAction(action);
+              baseActions[name].action = action;
+              allActions.push(action);
+            } else {
+              // Make the clip additive and remove the reference frame
+
+              THREE.AnimationUtils.makeClipAdditive(clip);
+
+              if (clip.name.endsWith("_pose")) {
+                clip = THREE.AnimationUtils.subclip(clip, clip.name, 2, 3, 30);
+              }
+
+              const action = mixer.clipAction(clip);
+              activateAction(action);
+              allActions.push(action);
+            }
+          }
+
+          animate();
+        });
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        // camera
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 100);
+        camera.position.set(-0.1, 1, 6);
+        //camera.translateX(3.0).translateY(5.0).translateZ(5.5);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enablePan = true;
+        controls.enableZoom = true;
+        controls.target.set(0, 1, 0);
+        controls.update();
+
+        window.addEventListener("resize", onWindowResize);
+      }
+
+      const crossFadeControls = [];
+
+      let currentBaseAction = "idle";
+      const allActions = [];
+      const baseActions = {
+        idle: { weight: 1 },
+        walk: { weight: 0 },
+        run: { weight: 0 },
+      };
+      const additiveActions = {
+        sneak_pose: { weight: 0 },
+        sad_pose: { weight: 0 },
+        agree: { weight: 0 },
+        headShake: { weight: 0 },
+      };
+      let numAnimations;
+
+      init();
+
+      function activateAction(action) {
+        const clip = action.getClip();
+        const settings = baseActions[clip.name] || additiveActions[clip.name];
+        setWeight(action, settings.weight);
+        action.play();
+      }
+
+      function modifyTimeScale(speed) {
+        mixer.timeScale = speed;
+      }
+
+      function prepareCrossFade(startAction, endAction, duration) {
+        // If the current action is 'idle', execute the crossfade immediately;
+        // else wait until the current action has finished its current loop
+
+        if (currentBaseAction === "idle" || !startAction || !endAction) {
+          executeCrossFade(startAction, endAction, duration);
+        } else {
+          synchronizeCrossFade(startAction, endAction, duration);
+        }
+
+        // Update control colors
+
+        if (endAction) {
+          const clip = endAction.getClip();
+          currentBaseAction = clip.name;
+        } else {
+          currentBaseAction = "None";
+        }
+
+        crossFadeControls.forEach(function (control) {
+          const name = control.property;
+          if (name === currentBaseAction) {
+            control.setActive();
+          } else {
+            control.setInactive();
+          }
+        });
+      }
+
+      function synchronizeCrossFade(startAction, endAction, duration) {
+        mixer.addEventListener("loop", onLoopFinished);
+
+        function onLoopFinished(event) {
+          if (event.action === startAction) {
+            mixer.removeEventListener("loop", onLoopFinished);
+
+            executeCrossFade(startAction, endAction, duration);
+          }
+        }
+      }
+
+      function executeCrossFade(startAction, endAction, duration) {
+        // Not only the start action, but also the end action must get a weight of 1 before fading
+        // (concerning the start action this is already guaranteed in this place)
+
+        if (endAction) {
+          setWeight(endAction, 1);
+          endAction.time = 0;
+
+          if (startAction) {
+            // Crossfade with warping
+
+            startAction.crossFadeTo(endAction, duration, true);
+          } else {
+            // Fade in
+
+            endAction.fadeIn(duration);
+          }
+        } else {
+          // Fade out
+
+          startAction.fadeOut(duration);
+        }
+      }
+
+      // This function is needed, since animationAction.crossFadeTo() disables its start action and sets
+      // the start action's timeScale to ((start animation's duration) / (end animation's duration))
+
+      function setWeight(action, weight) {
+        action.enabled = true;
+        action.setEffectiveTimeScale(1);
+        action.setEffectiveWeight(weight);
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      function animate() {
+        // Render loop
+        requestAnimationFrame(animate);
+
+        for (let i = 0; i !== numAnimations; ++i) {
+          const action = allActions[i];
+          const clip = action.getClip();
+          const settings = baseActions[clip.name] || additiveActions[clip.name];
+          settings.weight = action.getEffectiveWeight();
+        }
+
+        // Key Controls
+        if (keyMap[87] || keyMap[119]) {
+          // W key
+          camera.translateZ(-moveDistance);
+          keyMap[87] = false;
+          keyMap[119] = false;
+        }
+
+        if (keyMap[83] || keyMap[115]) {
+          // S key
+          camera.translateZ(moveDistance);
+          keyMap[83] = false;
+          keyMap[115] = false;
+        }
+
+        if (keyMap[65] || keyMap[97]) {
+          // A key
+          // Redirect motion by 90 degrees
+          camera.rotateOnAxis(new THREE.Vector3(0, 1, 0), rotateAngle * 10);
+          camera.translateX(-moveDistance);
+          keyMap[65] = false;
+          keyMap[97] = false;
+        }
+
+        if (keyMap[68] || keyMap[100]) {
+          // D key
+          camera.rotateOnAxis(new THREE.Vector3(0, 1, 0), -rotateAngle * 10);
+          camera.translateX(moveDistance);
+          keyMap[68] = false;
+          keyMap[100] = false;
+        }
+
+        if (keyMap[81] || keyMap[113]) {
+          //Q
+          lTracker = !lTracker;
+          if (lTracker) {
+            const backLight = new THREE.PointLight(0x005eff, 1, 5);
+            backLight.translateX(0.0).translateY(1.5).translateZ(-3.0);
+            backLight.castShadow = true;
+            backLight.name = "backLight";
+            scene.add(backLight);
+          } else {
+            scene.remove(scene.getObjectByName("backLight"));
+          }
+          keyMap[81] = false;
+          keyMap[113] = false;
+        }
+
+        function keyPress(event) {
+          keyMap[event.keyCode] = true;
+        }
+
+        window.addEventListener("keypress", keyPress);
+
+        // Get the time elapsed since the last frame, used for mixer update
+
+        const mixerUpdateDelta = clock.getDelta();
+
+        // Update the animation mixer, the stats panel, and render this frame
+
+        mixer.update(mixerUpdateDelta);
+
+        renderer.render(scene, camera);
+      }
+    </script>
   </body>
 </html>
